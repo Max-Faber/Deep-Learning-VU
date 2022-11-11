@@ -1,96 +1,102 @@
 import math
 
-
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
-
 
 def softmax(o_i, O):
     return math.exp(o_i) / sum([math.exp(o) for o in O])
 
-
 def init_parameters():
-    parameters = dict()
+    return {
+        'w': [[1., 1., 1.], [-1., -1., -1.]],
+        'b': [0., 0., 0.],
+        'k': [0., 0., 0.],
+        'h': [0., 0., 0.],
+        'v': [[1., 1.], [-1., -1.], [-1., -1.]],
+        'c': [0., 0.],
+        'o': [0., 0.],
+        'y': [0., 0.]
+    }
 
-    # parameters['w1'] = [[1., 1., 1.], [-1., -1., -1.]]
-    # parameters['b1'] = [0., 0., 0.]
-    # parameters['k1'] = [0., 0., 0.]
-    # parameters['h1'] = [0., 0., 0.]
-    #
-    # parameters['w2'] = [[1., -1., -1.], [1., -1., -1.]]
-    # parameters['b2'] = [0., 0.]
-    # parameters['k2'] = [0., 0.]
-    # parameters['h2'] = [0., 0.]
+def forward_pass(x, parameters):
+    range_x = range(len(x))
+    range_k = range(len(parameters['k']))
+    range_h = range(len(parameters['h']))
+    range_o = range(len(parameters['o']))
+    range_y = range(len(parameters['y']))
 
-    parameters['w'] = [[1., 1., 1.], [-1., -1., -1.]]
-    parameters['b'] = [0., 0., 0.]
-    parameters['k'] = [0., 0., 0.]
-    parameters['h'] = [0., 0., 0.]
+    for i in range_k:
+        for j in range_x:
+            parameters['k'][i] += parameters['w'][j][i] * x[j]
+        parameters['k'][i] += parameters['b'][i]
+        parameters['h'][i] = sigmoid(parameters['k'][i])
 
-    parameters['v'] = [[1., -1., -1.], [1., -1., -1.]]
-    parameters['c'] = [0., 0.]
-    parameters['o'] = [0., 0.]
-    parameters['y'] = [0., 0.]
+    for i in range_o:
+        for j in range_h:
+            parameters['o'][i] += parameters['h'][j] * parameters['v'][j][i]
+        parameters['o'][i] += parameters['c'][i]
+
+    for i in range_y:
+        parameters['y'][i] += softmax(parameters['o'][i], parameters['o'])
     return parameters
 
 
-def forward_pass(x, parameters):
-    for j in range(len(parameters['k'])):
-        for i in range(len(x)):
-            parameters['k'][j] += parameters['w'][i][j] * x[i]
-        parameters['k'][j] += parameters['b'][j]
-        parameters['h'][j] = sigmoid(parameters['k'][j])
+# Get rid of numpy before handing this in
+import numpy as np
 
-    for i in range(len(parameters['c'])):
-        for j in range(len(parameters['h'])):
-            parameters['o'][i] += parameters['h'][j] * parameters['v'][i][j]
-        parameters['o'][i] += parameters['c'][i]
-    for i in range(len(parameters['y'])):
-        parameters['y'][i] += softmax(parameters['o'][i], parameters['o'])
-    pass
+def print_shapes(grads):
+    for key, value in grads.items():
+        print(f"Shape of '{key}': {np.array(value).shape}")
 
+def get_ranges(params):
+    ranges = dict()
+    for layer_name, values_dict in params.items():
+        ranges[layer_name] = range(len(values_dict))
+    return ranges
 
-def backward_pass(parameters):
+def backward_pass(x, params):
     # https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function/46028029#46028029
-    grads = dict()
+    params['x'] = x
+    ranges = get_ranges(params)
+    grads = {
+        'y_c': [0. for _ in ranges['y']],
+        'y_o': [0. for _ in ranges['y']],
+        'o_v': [[0. for _ in ranges['o']] for _ in ranges['v']],
+        'o_h': [[0. for _ in ranges['o']] for _ in ranges['h']],
+        'h_b': [0. for _ in ranges['h']],
+        'h_k': [0. for _ in ranges['h']],
+        'k_w': [[0. for _ in ranges['k']] for _ in ranges['w']]
+    }
 
-    grads['dy_o'] = [[], []]
-    range_o = range(len(parameters['o']))
-    for i in range_o:
-        for j in range_o:
-            if i == j:
-                dy_o = parameters['o'][i] * (1. - parameters['o'][j])
+    for i in ranges['y']:
+        for j in ranges['y']:
+            if i != j:
+                grads['y_o'][0] += -params['y'][i] * params['y'][j]
             else:
-                dy_o = -parameters['o'][i] * parameters['o'][j]
-            grads['dy_o'][i].append(dy_o)
+                grads['y_o'][1] += params['y'][i] * (1. - params['y'][j])
+    grads['y_c'] = [d for d in grads['y_o']]
 
-    grads['do_v'] = []
-    grads['do_h'] = []
-    range_dy_o = range(len(grads['dy_o']))
-    range_v = range(len(parameters['v']))
-    range_h = range(len(parameters['h']))
-    for i in range_dy_o:
-        do_v = 0.
-        for j in range_v:
-            do_v += grads['dy_o'][i][j] * parameters['h'][i]
-        grads['do_v'].append(do_v)
-    for i in range_dy_o:
-        d = [0 for _ in range_h]
-        for j in range_v:
-            for k in range_h:
-                d[k] += grads['dy_o'][i][j] * parameters['v'][i][k]
-        grads['do_h'].append(d)
+    for i in ranges['v']:
+        for j in ranges['o']:
+            grads['o_v'][i][j] += grads['y_o'][j] * params['h'][i]
+            grads['o_h'][i][j] += grads['y_o'][j] * params['v'][i][j]
 
-    pass
+    for i in ranges['h']:
+        for j in ranges['o']:
+            grads['h_k'][i] += grads['o_h'][i][j] * sigmoid(params['h'][i]) * (1. - sigmoid(params['h'][i]))
+    grads['h_b'] = [d for d in grads['h_k']]
 
+    for i in ranges['w']:
+        for j in ranges['k']:
+            grads['k_w'][i][j] += grads['h_k'][j] * x[i]
+    return grads
 
 def neural_network():
-    parameters = init_parameters()
     x = [1., -1.]
-    y = [1., 0.]
-    forward_pass(x, parameters)
-    backward_pass(parameters)
-
+    parameters = init_parameters()
+    parameters = forward_pass(x, parameters)
+    grads = backward_pass(x, parameters)
+    print(grads)
 
 if __name__ == '__main__':
     neural_network()
