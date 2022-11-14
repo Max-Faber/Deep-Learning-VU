@@ -25,19 +25,23 @@ def forward_pass(x, parameters):
     range_o = range(len(parameters['o']))
     range_y = range(len(parameters['y']))
 
-    for i in range_k:
-        for j in range_x:
-            parameters['k'][i] += parameters['w'][j][i] * x[j]
-        parameters['k'][i] += parameters['b'][i]
-        parameters['h'][i] = sigmoid(parameters['k'][i])
+    for j in range_k:
+        parameters['k'][j] = 0.
+        parameters['h'][j] = 0.
+        for i in range_x:
+            parameters['k'][j] += parameters['w'][i][j] * x[i]
+        parameters['k'][j] += parameters['b'][i]
+        parameters['h'][j] = sigmoid(parameters['k'][i])
 
     for i in range_o:
+        parameters['o'][i] = 0.
         for j in range_h:
             parameters['o'][i] += parameters['h'][j] * parameters['v'][j][i]
         parameters['o'][i] += parameters['c'][i]
 
     for i in range_y:
-        parameters['y'][i] += softmax(parameters['o'][i], parameters['o'])
+        parameters['y'][i] = softmax(parameters['o'][i], parameters['o'])
+
     return parameters
 
 
@@ -50,52 +54,56 @@ def print_shapes(grads):
 
 def get_ranges(params):
     ranges = dict()
+
     for layer_name, values_dict in params.items():
         ranges[layer_name] = range(len(values_dict))
     return ranges
 
-def backward_pass(x, params):
+def backward_pass(x, y, params):
     # https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function/46028029#46028029
-    params['x'] = x
     ranges = get_ranges(params)
-    grads = {
-        'y_c': [0. for _ in ranges['y']],
-        'y_o': [0. for _ in ranges['y']],
-        'o_v': [[0. for _ in ranges['o']] for _ in ranges['v']],
-        'o_h': [[0. for _ in ranges['o']] for _ in ranges['h']],
-        'h_b': [0. for _ in ranges['h']],
-        'h_k': [0. for _ in ranges['h']],
-        'k_w': [[0. for _ in ranges['k']] for _ in ranges['w']]
-    }
+    dl_dy = [0. for _ in ranges['y']]
+    dy_do = [0. for _ in ranges['y']]
+    do_dv = [[0. for _ in ranges['o']] for _ in ranges['v']]
+    do_dh = [0. for _ in ranges['h']]
+    dh_dk = [0. for _ in ranges['h']]
+    dk_dw = [[0. for _ in ranges['k']] for _ in ranges['w']]
 
-    for i in ranges['y']:
-        for j in ranges['y']:
-            if i != j:
-                grads['y_o'][0] += -params['y'][i] * params['y'][j]
+    dl_dy[y] = -1 / params['y'][y]
+    for j in ranges['y']:
+        for i in ranges['o']:
+            if i == j:
+                dy_do[i] += dl_dy[j] * params['y'][j] * (1. - params['y'][i])
             else:
-                grads['y_o'][1] += params['y'][i] * (1. - params['y'][j])
-    grads['y_c'] = [d for d in grads['y_o']]
+                dy_do[i] += dl_dy[j] * -params['y'][j] * params['y'][i]
+    dy_dc = [d for d in dy_do]
 
-    for i in ranges['v']:
-        for j in ranges['o']:
-            grads['o_v'][i][j] += grads['y_o'][j] * params['h'][i]
-            grads['o_h'][i][j] += grads['y_o'][j] * params['v'][i][j]
+    for j in ranges['o']:
+        for i in ranges['v']:
+            do_dv[i][j] += dy_do[j] * params['h'][i]
+            do_dh[i] += dy_do[j] * params['v'][i][j]
 
     for i in ranges['h']:
-        for j in ranges['o']:
-            grads['h_k'][i] += grads['o_h'][i][j] * sigmoid(params['h'][i]) * (1. - sigmoid(params['h'][i]))
-    grads['h_b'] = [d for d in grads['h_k']]
+        dh_dk[i] += do_dh[i] * sigmoid(params['h'][i]) * (1. - sigmoid(params['h'][i]))
+    dk_db = [d for d in dh_dk]
 
-    for i in ranges['w']:
-        for j in ranges['k']:
-            grads['k_w'][i][j] += grads['h_k'][j] * x[i]
+    for j in ranges['k']:
+        for i in ranges['w']:
+            dk_dw[i][j] += dh_dk[j] * x[i]
+
+    grads = {
+        'dy_dv': do_dv,
+        'dy_dc': dy_dc,
+        'dk_dw': dk_dw,
+        'dk_db': dk_db
+    }
     return grads
 
 def neural_network():
     x = [1., -1.]
     parameters = init_parameters()
     parameters = forward_pass(x, parameters)
-    grads = backward_pass(x, parameters)
+    grads = backward_pass(x, 0, parameters)
     print(grads)
 
 if __name__ == '__main__':
