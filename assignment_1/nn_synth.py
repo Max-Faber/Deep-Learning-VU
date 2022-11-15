@@ -1,6 +1,6 @@
 import random
 import math
-from data import load_synth
+from assignment_1.data import load_synth
 from nn import forward_pass, backward_pass
 
 def init_parameters(layer_sizes, weight_range):
@@ -8,7 +8,7 @@ def init_parameters(layer_sizes, weight_range):
     Initializes the parameters of the neural network using the given layer sizes and weight range
     :param layer_sizes: Dictionary mapping the size (no. neurons) per layer
     :param weight_range: Tuple indicating the min. and max. range of the weights which are initialized randomly
-    :return:
+    :return: Dictionary mapping the layer names to its corresponding parameters (weights)
     """
     return {
         'w': [[random.uniform(weight_range[0], weight_range[1]) for _ in range(layer_sizes['n_hidden'])] for _ in range(layer_sizes['n_inputs'])],
@@ -38,11 +38,11 @@ def propagate(params, x, y, layer_sizes):
 def update_weights(params, grads, learning_rate, layer_sizes):
     """
     Updates the weights of the neural network
-    :param params:
-    :param grads:
-    :param learning_rate:
-    :param layer_sizes:
-    :return:
+    :param params: Parameters (weights) of the model
+    :param grads: Necessary weights to update the weights
+    :param learning_rate: Learning rate for updating the weights
+    :param layer_sizes: Dictionary mapping the layers to the no. neurons in that layer
+    :return: Dictionary containing the updated parameters
     """
     for j in range(layer_sizes['n_hidden']):
         for i in range(layer_sizes['n_outputs']):
