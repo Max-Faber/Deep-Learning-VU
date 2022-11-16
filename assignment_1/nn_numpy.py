@@ -73,11 +73,11 @@ def backward_pass(X, Y, params, cache, layer_sizes):
     :return:
     """
     # Convert the target class to a one-hot encoding
-    Y_one_hot = np.zeros((len(X), layer_sizes['n_outputs']))
-    for i in range(len(Y_one_hot)):
-        Y_one_hot[i][Y[i]] = 1.
+    # Y_one_hot = np.zeros((len(X), layer_sizes['n_outputs']))
+    # for i in range(len(Y_one_hot)):
+    #     Y_one_hot[i][Y[i]] = 1.
 
-    dy_do = params['y'] - Y_one_hot
+    dy_do = params['y'] - Y
     dy_dc = np.copy(dy_do)
     do_dv = np.einsum('ij,ik->ijk', params['h'], dy_do) # np.matmul(params['h'].T, dy_do) # np.matmul(dy_do.T, params['h']) # np.outer(params['h'], dy_do)
     do_dh = np.matmul(dy_do, params['v'].T) # np.matmul(params['v'], dy_do)
@@ -93,11 +93,6 @@ def backward_pass(X, Y, params, cache, layer_sizes):
     }
     return grads
 
-# yoh.shape = (10,)
-# yo.shape = (10,)
-# yc.shape = (10,)
-#
-
 def propagate(params, X_batch, Y_batch, layer_sizes):
     """
     Performs a forward- & backward pass and compute the cost
@@ -107,14 +102,14 @@ def propagate(params, X_batch, Y_batch, layer_sizes):
     :param layer_sizes: Dictionary mapping the layers to the no. neurons in that layer
     :return: The cost (integer) and gradients (dictionary) which will be used to update the weights
     """
-    grads_sum = {
-        'dy_dv': np.zeros((layer_sizes['n_hidden'], layer_sizes['n_outputs'])),
-        'dy_dc': np.zeros(layer_sizes['n_outputs']),
-        'dk_dw': np.zeros((layer_sizes['n_inputs'], layer_sizes['n_hidden'])),
-        'dk_db': np.zeros(layer_sizes['n_hidden'])
-    }
+    # grads_sum = {
+    #     'dy_dv': np.zeros((layer_sizes['n_hidden'], layer_sizes['n_outputs'])),
+    #     'dy_dc': np.zeros(layer_sizes['n_outputs']),
+    #     'dk_dw': np.zeros((layer_sizes['n_inputs'], layer_sizes['n_hidden'])),
+    #     'dk_db': np.zeros(layer_sizes['n_hidden'])
+    # }
     costs = np.array([])
-    batch_size = len(X_batch)
+    # batch_size = len(X_batch)
     # for X, Y in zip(X_batch, Y_batch):
     #     # Perform a forward pass given x and the current parameters
     #     cache = forward_pass(X=X, params=params)
@@ -131,7 +126,7 @@ def propagate(params, X_batch, Y_batch, layer_sizes):
     # Perform a forward pass given x and the current parameters
     cache = forward_pass(X=X_batch, params=params)
     # Calculate the cost using the predicted probability of the target class
-    probs_y = [c[y] for c, y in zip(cache['y'], Y_batch)]
+    probs_y = [c[np.where(y == 1)] for c, y in zip(cache['y'], Y_batch)]
     costs = np.append(costs, -np.log(probs_y))
     # Perform a backward pass given x, y and the current parameters
     grads = backward_pass(X=X_batch, Y=Y_batch, params=params, cache=cache, layer_sizes=layer_sizes)
@@ -187,6 +182,15 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes, batch_size):
         print(f'Epoch {epoch}, cost: {mean_cost:.5f}')
     return params
 
+def convert_one_hot(Y, n_classes):
+    """
+
+    :param Y:
+    :param n_classes:
+    :return:
+    """
+    return np.eye(n_classes, dtype=int)[Y]
+
 def neural_network():
     """
     Constructs and trains a neural network
@@ -209,16 +213,17 @@ def neural_network():
     (xtrain, ytrain), (xval, yval), num_cls = load_mnist()
     # Normalize the training data
     xtrain_norm = normalize(xtrain)
-    del xtrain
+    ytrain_one_hot = convert_one_hot(Y=ytrain, n_classes=num_cls)
+    del xtrain, ytrain
     # Define the layer sizes
     layer_sizes = {
         'n_inputs': xtrain_norm.shape[1],
         'n_hidden': 300,
-        'n_outputs': ytrain.max() + 1
+        'n_outputs': num_cls
     }
     # Initialize the weights using the layer sizes and weight range
     params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1., 1.))
-    return optimize(params=params, X=xtrain_norm, Y=ytrain, n_epochs=1000, learning_rate=0.01, layer_sizes=layer_sizes, batch_size=128)
+    return optimize(params=params, X=xtrain_norm, Y=ytrain_one_hot, n_epochs=1000, learning_rate=0.01, layer_sizes=layer_sizes, batch_size=128)
 
 if __name__ == '__main__':
     neural_network()
