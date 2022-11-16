@@ -30,7 +30,7 @@ def propagate(params, x, y, layer_sizes):
     cache = forward_pass(x=x, params=params, layer_sizes=layer_sizes)
     # Calculate the cost using the predicted probability of the target class
     prob_y = cache['y'][y]
-    cost = -math.log(prob_y)
+    cost = -math.log(prob_y, math.e)
     # Perform a backward pass given x, y and the current parameters
     grads = backward_pass(x=x, y=y, params=params, cache=cache, layer_sizes=layer_sizes)
     return cost, grads

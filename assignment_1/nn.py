@@ -76,8 +76,8 @@ def backward_pass(x, y, params, cache, layer_sizes):
     """
     # Generate lists in which the gradients will be stored
     dl_dy = [0. for _ in range(layer_sizes['n_outputs'])]
-    dy_dc = [0. for _ in range(layer_sizes['n_outputs'])]
     dy_do = [0. for _ in range(layer_sizes['n_outputs'])]
+    do_dc = [0. for _ in range(layer_sizes['n_outputs'])]
     do_dv = [[0. for _ in range(layer_sizes['n_outputs'])] for _ in range(layer_sizes['n_hidden'])]
     do_dh = [0. for _ in range(layer_sizes['n_hidden'])]
     dh_dk = [0. for _ in range(layer_sizes['n_hidden'])]
@@ -91,7 +91,7 @@ def backward_pass(x, y, params, cache, layer_sizes):
                 dy_do[j] += dl_dy[i] * cache['y'][j] * (1. - cache['y'][i])
             else:
                 dy_do[j] += dl_dy[i] * -cache['y'][j] * cache['y'][i]
-        dy_dc[j] = dy_do[j]
+        do_dc[j] = dy_do[j]
     # Calculate gradients of the hidden layer (do_dv, do_dh)
     for j in range(layer_sizes['n_outputs']):
         for i in range(layer_sizes['n_hidden']):
@@ -105,8 +105,8 @@ def backward_pass(x, y, params, cache, layer_sizes):
         dk_db[j] = dh_dk[j]
     # Store the gradients which are necessary to update the weights in a dictionary and return it
     grads = {
-        'dy_dv': do_dv,
-        'dy_dc': dy_dc,
+        'do_dv': do_dv,
+        'do_dc': do_dc,
         'dk_dw': dk_dw,
         'dk_db': dk_db
     }
@@ -129,8 +129,8 @@ def neural_network():
     params = init_parameters()
     cache = forward_pass(x=x, params=params, layer_sizes=layer_sizes)
     grads = backward_pass(x=x, y=y, params=params, cache=cache, layer_sizes=layer_sizes)
-    print(f"dy_dv: {grads['dy_dv']}")
-    print(f"dy_dc: {grads['dy_dc']}")
+    print(f"do_dv: {grads['do_dv']}")
+    print(f"do_dc: {grads['do_dc']}")
     print(f"dk_dw: {grads['dk_dw']}")
     print(f"dk_db: {grads['dk_db']}")
 
