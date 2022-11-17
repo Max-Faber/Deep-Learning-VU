@@ -1,24 +1,21 @@
 import numpy as np
 from data import load_mnist
 
-def sigmoid(X):
+def sigmoid(x):
     """
 
-    :param X:
+    :param x:
     :return:
     """
-    return 1. / (1. + np.exp(-X))
+    return 1 / (1 + np.exp(-x))
 
-def softmax(O):
+def softmax(o):
     """
 
-    :param O:
+    :param o:
     :return:
     """
-    numerator = np.exp(O) # - mx)
-    denominator = np.sum(numerator, axis=-1, keepdims=True)
-    return numerator/denominator
-    # return np.exp(O) / np.sum(np.exp(O))
+    return np.exp(o) / np.sum(np.exp(o))
 
 def softmax_grad(y):
     """
@@ -62,6 +59,11 @@ def forward_pass(X, params):
     params['y'] = softmax(params['o'])
     return params
 
+# k.shape = (300,)
+# h.shape = (300,)
+# o.shape = (10,)
+# y.shape = (10,)
+
 def backward_pass(X, Y, params, cache, layer_sizes):
     """
 
@@ -73,23 +75,22 @@ def backward_pass(X, Y, params, cache, layer_sizes):
     :return:
     """
     # Convert the target class to a one-hot encoding
-    # Y_one_hot = np.zeros((len(X), layer_sizes['n_outputs']))
-    # for i in range(len(Y_one_hot)):
-    #     Y_one_hot[i][Y[i]] = 1.
+    Y_one_hot = np.zeros(layer_sizes['n_outputs'])
+    Y_one_hot[Y] = 1
 
-    dy_do = params['y'] - Y
+    dy_do = params['y'] - Y_one_hot
     dy_dc = np.copy(dy_do)
-    do_dv = np.einsum('ij,ik->ijk', params['h'], dy_do) # np.matmul(params['h'].T, dy_do) # np.matmul(dy_do.T, params['h']) # np.outer(params['h'], dy_do)
-    do_dh = np.matmul(dy_do, params['v'].T) # np.matmul(params['v'], dy_do)
+    do_dv = np.outer(params['h'], dy_do)
+    do_dh = np.matmul(params['v'], dy_do)
 
     dh_dk = do_dh * params['h'] * (1. - params['h'])
-    dk_dw = np.einsum('ij,ik->ijk', X, dh_dk) # np.matmul(X.T, dh_dk)# np.outer(X, dh_dk)
+    dk_dw = np.outer(X, dh_dk)
     dk_db = np.copy(dh_dk)
     grads = {
-        'dy_dv': do_dv.mean(axis=0),
-        'dy_dc': dy_dc.mean(axis=0),
-        'dk_dw': dk_dw.mean(axis=0),
-        'dk_db': dk_db.mean(axis=0)
+        'dy_dv': do_dv,
+        'dy_dc': dy_dc,
+        'dk_dw': dk_dw,
+        'dk_db': dk_db
     }
     return grads
 
@@ -102,39 +103,26 @@ def propagate(params, X_batch, Y_batch, layer_sizes):
     :param layer_sizes: Dictionary mapping the layers to the no. neurons in that layer
     :return: The cost (integer) and gradients (dictionary) which will be used to update the weights
     """
-    # grads_sum = {
-    #     'dy_dv': np.zeros((layer_sizes['n_hidden'], layer_sizes['n_outputs'])),
-    #     'dy_dc': np.zeros(layer_sizes['n_outputs']),
-    #     'dk_dw': np.zeros((layer_sizes['n_inputs'], layer_sizes['n_hidden'])),
-    #     'dk_db': np.zeros(layer_sizes['n_hidden'])
-    # }
-    costs = np.array([])
-    # batch_size = len(X_batch)
-    # for X, Y in zip(X_batch, Y_batch):
-    #     # Perform a forward pass given x and the current parameters
-    #     cache = forward_pass(X=X, params=params)
-    #     # Calculate the cost using the predicted probability of the target class
-    #     prob_y = cache['y'][Y]
-    #     cost = -np.log(prob_y)
-    #     costs.append(cost)
-    #     # Perform a backward pass given x, y and the current parameters
-    #     grads = backward_pass(X=X_batch, Y=Y_batch, params=params, cache=cache, layer_sizes=layer_sizes)
-    #     # grads = backward_pass(X=X, Y=Y, params=params, cache=cache, layer_sizes=layer_sizes)
-    #     grads_sum = { key: value + grads_sum[key] for key, value in grads.items() }
-    # avg_grads = { key: value / batch_size for key, value in grads_sum.items() }
-
-    # Perform a forward pass given x and the current parameters
-    cache = forward_pass(X=X_batch, params=params)
-    # Calculate the cost using the predicted probability of the target class
-    probs_y = [c[np.where(y == 1)] for c, y in zip(cache['y'], Y_batch)]
-    costs = np.append(costs, -np.log(probs_y))
-    # Perform a backward pass given x, y and the current parameters
-    grads = backward_pass(X=X_batch, Y=Y_batch, params=params, cache=cache, layer_sizes=layer_sizes)
-    # grads_sum = { key: value + grads_sum[key] for key, value in grads.items() }
-    # avg_grads = { key: value / batch_size for key, value in grads_sum.items() }
-    avg_grads = grads
-    # avg_grads['dy_dc'] = np.array([_ / batch_size for _ in avg_grads['dy_dc']])
-    # avg_grads['dk_db'] = np.array([_ / batch_size for _ in avg_grads['dk_db']])
+    grads_sum = {
+        'dy_dv': np.zeros((layer_sizes['n_hidden'], layer_sizes['n_outputs'])),
+        'dy_dc': np.zeros(layer_sizes['n_outputs']),
+        'dk_dw': np.zeros((layer_sizes['n_inputs'], layer_sizes['n_hidden'])),
+        'dk_db': np.zeros(layer_sizes['n_hidden'])
+    }
+    costs = []
+    batch_size = len(X_batch)
+    for X, Y in zip(X_batch, Y_batch):
+        # Perform a forward pass given x and the current parameters
+        cache = forward_pass(X=X, params=params)
+        # Calculate the cost using the predicted probability of the target class
+        prob_y = cache['y'][Y]
+        cost = -np.log(prob_y)
+        costs.append(cost)
+        # Perform a backward pass given x, y and the current parameters
+        grads = backward_pass(X=X, Y=Y, params=params, cache=cache, layer_sizes=layer_sizes)
+        # grads = backward_pass(X=X, Y=Y, params=params, cache=cache, layer_sizes=layer_sizes)
+        grads_sum = { key: value + grads_sum[key] for key, value in grads.items() }
+    avg_grads = { key: value / batch_size for key, value in grads_sum.items() }
     return costs, avg_grads
 
 def update_weights(params, grads, learning_rate):
@@ -165,7 +153,7 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes, batch_size):
     :param batch_size: Size of the batches being fed into the network before updating the weights
     :return: Dictionary mapping the name of the layer with its corresponding weights after training the model
     """
-    cost_per_epoch = np.array([])
+    cost_per_epoch = []
     n_samples = len(X)
     for epoch in range(n_epochs):
         cost_per_instance = []
@@ -173,57 +161,42 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes, batch_size):
             X_batch = X[i:min(i + batch_size, n_samples)]
             Y_batch = Y[i:min(i + batch_size, n_samples)]
             costs, grads = propagate(params=params, X_batch=X_batch, Y_batch=Y_batch, layer_sizes=layer_sizes)
-            # cost_per_instance += costs
-            cost_per_instance = np.append(cost_per_instance, costs)
+            cost_per_instance += costs
             params = update_weights(params=params, grads=grads, learning_rate=learning_rate)
         mean_cost = sum(cost_per_instance) / len(cost_per_instance)
-        np.append(cost_per_epoch, mean_cost)
-        # cost_per_epoch.append(mean_cost)
+        cost_per_epoch.append(mean_cost)
         print(f'Epoch {epoch}, cost: {mean_cost:.5f}')
     return params
-
-def convert_one_hot(Y, n_classes):
-    """
-
-    :param Y:
-    :param n_classes:
-    :return:
-    """
-    return np.eye(n_classes, dtype=int)[Y]
 
 def neural_network():
     """
     Constructs and trains a neural network
     :return: The parameters (weights) of the neural network
     """
-    # X = np.array([[1., -1.], [1., -1.], [1., -1]])
-    # X = np.array([[1., -1.]])
+    # X = np.array([1., -1.])
     # params = init_parameters_example()
     # cache = forward_pass(X=X, params=params)
-    # Define the layer sizes
     # layer_sizes = {
     #     'n_inputs': 2,
     #     'n_hidden': 3,
     #     'n_outputs': 2
     # }
-    # backward_pass(X=X, Y=[0, 0, 0], params=params, layer_sizes=layer_sizes, cache=cache)
-    # backward_pass(X=X, Y=[0], params=params, layer_sizes=layer_sizes, cache=cache)
+    # backward_pass(X=X, Y=0, params=params, cache=cache, layer_sizes=layer_sizes)
 
     # Load the data to train on
     (xtrain, ytrain), (xval, yval), num_cls = load_mnist()
     # Normalize the training data
     xtrain_norm = normalize(xtrain)
-    ytrain_one_hot = convert_one_hot(Y=ytrain, n_classes=num_cls)
-    del xtrain, ytrain
+    del xtrain
     # Define the layer sizes
     layer_sizes = {
         'n_inputs': xtrain_norm.shape[1],
         'n_hidden': 300,
-        'n_outputs': num_cls
+        'n_outputs': ytrain.max() + 1
     }
     # Initialize the weights using the layer sizes and weight range
     params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1., 1.))
-    return optimize(params=params, X=xtrain_norm, Y=ytrain_one_hot, n_epochs=1000, learning_rate=0.01, layer_sizes=layer_sizes, batch_size=128)
+    return optimize(params=params, X=xtrain_norm, Y=ytrain, n_epochs=1000, learning_rate=0.01, layer_sizes=layer_sizes, batch_size=128)
 
 if __name__ == '__main__':
     neural_network()
