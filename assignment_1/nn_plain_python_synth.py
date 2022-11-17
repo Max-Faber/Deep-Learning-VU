@@ -1,7 +1,7 @@
 import random
 import math
 from assignment_1.data import load_synth
-from nn import forward_pass, backward_pass
+from nn_plain_python import forward_pass, backward_pass
 
 def init_parameters(layer_sizes, weight_range):
     """
@@ -68,7 +68,7 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes):
     :return: Dictionary mapping the name of the layer with its corresponding weights after training the model
     """
     cost_per_epoch = []
-    for epoch in range(n_epochs):
+    for epoch in range(1, n_epochs + 1):
         cost_per_instance = []
         for x, y in zip(X, Y):
             cost, grads = propagate(params=params, x=x, y=y, layer_sizes=layer_sizes)

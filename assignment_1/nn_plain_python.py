@@ -6,7 +6,7 @@ def sigmoid(x):
     :param x: Non-activated neuron
     :return: Sigmoid activated neuron
     """
-    return 1 / (1 + math.exp(-x))
+    return 1. / (1. + math.exp(-x))
 
 def softmax(O):
     """

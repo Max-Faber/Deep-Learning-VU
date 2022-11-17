@@ -7,7 +7,7 @@ def sigmoid(x):
     :param x:
     :return:
     """
-    return 1 / (1 + np.exp(-x))
+    return 1. / (1. + np.exp(-x))
 
 def softmax(o):
     """
@@ -16,15 +16,6 @@ def softmax(o):
     :return:
     """
     return np.exp(o) / np.sum(np.exp(o))
-
-def softmax_grad(y):
-    """
-
-    :param y:
-    :return:
-    """
-    s = y.reshape(-1, 1)
-    return np.diagflat(s) - np.dot(s, s.T)
 
 def init_parameters_example():
     """
@@ -53,16 +44,11 @@ def init_parameters(layer_sizes, weight_range):
     }
 
 def forward_pass(X, params):
-    params['k'] = np.matmul(X, params['w'])
+    params['k'] = np.matmul(X, params['w']) + params['b']
     params['h'] = sigmoid(params['k'])
-    params['o'] = np.matmul(params['h'], params['v']) # np.matmul(params['v'].T, params['h'])
+    params['o'] = np.matmul(params['h'], params['v']) + params['c']
     params['y'] = softmax(params['o'])
     return params
-
-# k.shape = (300,)
-# h.shape = (300,)
-# o.shape = (10,)
-# y.shape = (10,)
 
 def backward_pass(X, Y, params, cache, layer_sizes):
     """
@@ -77,12 +63,12 @@ def backward_pass(X, Y, params, cache, layer_sizes):
     # Convert the target class to a one-hot encoding
     Y_one_hot = np.zeros(layer_sizes['n_outputs'])
     Y_one_hot[Y] = 1
-
+    # Backward pass of second layer
     dy_do = params['y'] - Y_one_hot
     dy_dc = np.copy(dy_do)
     do_dv = np.outer(params['h'], dy_do)
     do_dh = np.matmul(params['v'], dy_do)
-
+    # Backward pass of first layer
     dh_dk = do_dh * params['h'] * (1. - params['h'])
     dk_dw = np.outer(X, dh_dk)
     dk_db = np.copy(dh_dk)
@@ -155,13 +141,13 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes, batch_size):
     """
     cost_per_epoch = []
     n_samples = len(X)
-    for epoch in range(n_epochs):
-        cost_per_instance = []
+    for epoch in range(1, n_epochs + 1):
+        cost_per_instance = np.array([])
         for i in range(0, n_samples, batch_size):
             X_batch = X[i:min(i + batch_size, n_samples)]
             Y_batch = Y[i:min(i + batch_size, n_samples)]
             costs, grads = propagate(params=params, X_batch=X_batch, Y_batch=Y_batch, layer_sizes=layer_sizes)
-            cost_per_instance += costs
+            cost_per_instance = np.append(cost_per_instance, costs)
             params = update_weights(params=params, grads=grads, learning_rate=learning_rate)
         mean_cost = sum(cost_per_instance) / len(cost_per_instance)
         cost_per_epoch.append(mean_cost)
@@ -173,16 +159,6 @@ def neural_network():
     Constructs and trains a neural network
     :return: The parameters (weights) of the neural network
     """
-    # X = np.array([1., -1.])
-    # params = init_parameters_example()
-    # cache = forward_pass(X=X, params=params)
-    # layer_sizes = {
-    #     'n_inputs': 2,
-    #     'n_hidden': 3,
-    #     'n_outputs': 2
-    # }
-    # backward_pass(X=X, Y=0, params=params, cache=cache, layer_sizes=layer_sizes)
-
     # Load the data to train on
     (xtrain, ytrain), (xval, yval), num_cls = load_mnist()
     # Normalize the training data
