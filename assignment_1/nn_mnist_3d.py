@@ -88,7 +88,8 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
     mean_stats = {
         'train': {
             'loss_per_epoch': np.array([]),
-            'acc_per_epoch': np.array([])
+            'acc_per_epoch': np.array([]),
+            'batch_loss_per_timestep': np.array([])
         },
         'val': {
             'loss_per_epoch': np.array([]),
@@ -108,20 +109,21 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
             X_batch_train = X_train[i:min(i + batch_size, n_samples_train)]
             Y_batch_train_one_hot = Y_train_one_hot[i:min(i + batch_size, n_samples_train)]
             Y_batch_train = Y_train[i:min(i + batch_size, n_samples_train)]
-            loss_train, mean_grads, acc_train = propagate(
+            losses_batch_train, mean_grads, acc_train = propagate(
                 params=params,
                 X_batch=X_batch_train,
                 Y_batch_one_hot=Y_batch_train_one_hot,
                 Y_batch=Y_batch_train
             )
             params = update_weights(params=params, grads=mean_grads, learning_rate=learning_rate)
-            losses_train = np.append(losses_train, loss_train)
+            losses_train = np.append(losses_train, losses_batch_train)
             accs_train = np.append(accs_train, acc_train)
+            mean_stats['train']['batch_loss_per_timestep'] = np.append(mean_stats['train']['batch_loss_per_timestep'], losses_batch_train.sum() / losses_batch_train.size)
         for i in range(0, n_samples_val, batch_size):
             # Perform a propagation step using the validation data (without backward pass and weight update obviously)
             X_batch_val = X_val[i:min(i + batch_size, n_samples_val)]
-            Y_batch_val_one_hot = Y_val[i:min(i + batch_size, n_samples_val)]
-            Y_batch_val = yval[i:min(i + batch_size, n_samples_val)]
+            Y_batch_val_one_hot = Y_val_one_hot[i:min(i + batch_size, n_samples_val)]
+            Y_batch_val = Y_val[i:min(i + batch_size, n_samples_val)]
             loss_val, _, acc_val = propagate(
                 params=params,
                 X_batch=X_batch_val,
@@ -161,9 +163,9 @@ def neural_network():
     params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1., 1.))
     parameters, mean_stats = optimize(
         params=params,
-        X_train=xtrain_norm,
-        Y_train=ytrain,
-        Y_train_one_hot=ytrain_one_hot,
+        X_train=xtrain_norm[:10000],
+        Y_train=ytrain[:10000],
+        Y_train_one_hot=ytrain_one_hot[:10000],
         X_val=xval_norm,
         Y_val=yval,
         Y_val_one_hot=yval_one_hot
@@ -171,8 +173,8 @@ def neural_network():
     return parameters, mean_stats
 
 if __name__ == '__main__':
-    batch_size = 1
-    learning_rate = 0.03
+    batch_size = 32
+    learning_rate = 0.01
     n_epochs = 5
     # Load the data to train on
     (xtrain, ytrain), (xval, yval), n_classes = load_mnist()

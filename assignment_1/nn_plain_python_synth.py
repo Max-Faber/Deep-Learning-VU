@@ -1,7 +1,9 @@
 import random
 import math
-from assignment_1.data import load_synth
+from data import load_synth
 from nn_plain_python import forward_pass, backward_pass
+from nn_mnist_2d import normalize
+from stats import dump_stats_json
 
 def init_parameters(layer_sizes, weight_range):
     """
@@ -30,10 +32,11 @@ def propagate(params, x, y, layer_sizes):
     cache = forward_pass(x=x, params=params, layer_sizes=layer_sizes)
     # Calculate the cost using the predicted probability of the target class
     prob_y = cache['y'][y]
+    predicted_class = cache['y'].index(max(cache['y']))
     cost = -math.log(prob_y, math.e)
     # Perform a backward pass given x, y and the current parameters
     grads = backward_pass(x=x, y=y, params=params, cache=cache, layer_sizes=layer_sizes)
-    return cost, grads
+    return cost, grads, predicted_class
 
 def update_weights(params, grads, learning_rate, layer_sizes):
     """
@@ -46,9 +49,9 @@ def update_weights(params, grads, learning_rate, layer_sizes):
     """
     for j in range(layer_sizes['n_hidden']):
         for i in range(layer_sizes['n_outputs']):
-            params['v'][j][i] -= learning_rate * grads['dy_dv'][j][i]
+            params['v'][j][i] -= learning_rate * grads['do_dv'][j][i]
     for i in range(layer_sizes['n_outputs']):
-        params['c'][i] -= learning_rate * grads['dy_dc'][i]
+        params['c'][i] -= learning_rate * grads['do_dc'][i]
     for j in range(layer_sizes['n_inputs']):
         for i in range(layer_sizes['n_hidden']):
             params['w'][j][i] -= learning_rate * grads['dk_dw'][j][i]
@@ -67,35 +70,49 @@ def optimize(params, X, Y, n_epochs, learning_rate, layer_sizes):
     :param layer_sizes: Dictionary mapping the layers to the no. neurons in that layer
     :return: Dictionary mapping the name of the layer with its corresponding weights after training the model
     """
-    cost_per_epoch = []
+    mean_loss_per_epoch = []
+    mean_acc_per_epoch = []
     for epoch in range(1, n_epochs + 1):
-        cost_per_instance = []
+        loss_per_instance = []
+        n_correct = 0
         for x, y in zip(X, Y):
-            cost, grads = propagate(params=params, x=x, y=y, layer_sizes=layer_sizes)
-            cost_per_instance.append(cost)
+            loss, grads, predicted_class = propagate(params=params, x=x, y=y, layer_sizes=layer_sizes)
+            loss_per_instance.append(loss)
+            n_correct += 1 if predicted_class == y else 0
             params = update_weights(params=params, grads=grads, learning_rate=learning_rate, layer_sizes=layer_sizes)
-        mean_cost = sum(cost_per_instance) / len(cost_per_instance)
-        cost_per_epoch.append(mean_cost)
-        print(f'Epoch {epoch}, cost: {mean_cost:.5f}')
-    return params
+        mean_loss = sum(loss_per_instance) / len(loss_per_instance)
+        mean_loss_per_epoch.append(mean_loss)
+        mean_acc_per_epoch.append(n_correct / len(X))
+        print(f'Epoch {epoch}, cost: {mean_loss:.5f}')
+    mean_stats = {
+        'train': {
+            'loss_per_epoch': mean_loss_per_epoch,
+            'acc_per_epoch': mean_acc_per_epoch
+        }
+    }
+    return params, mean_stats
 
 def neural_network():
     """
     Constructs and trains a neural network
     :return: The parameters (weights) of the neural network
     """
+    # Initialize the weights using the layer sizes and weight range
+    params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1, 1.))
+    # Load the data to train on
+    (xtrain, ytrain), (xval, yval), num_cls = load_synth()
+    xtrain_normalized = normalize(X=xtrain)
+    del xtrain
+    # Train the model and return the resulting parameters
+    return optimize(params=params, X=xtrain_normalized, Y=ytrain, n_epochs=100, learning_rate=learning_rate, layer_sizes=layer_sizes)
+
+if __name__ == '__main__':
+    learning_rate = 0.01
     # Define the layer sizes
     layer_sizes = {
         'n_inputs': 2,
         'n_hidden': 3,
         'n_outputs': 2
     }
-    # Initialize the weights using the layer sizes and weight range
-    params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1., 1.))
-    # Load the data to train on
-    (xtrain, ytrain), (xval, yval), num_cls = load_synth()
-    # Train the model and return the resulting parameters
-    return optimize(params=params, X=xtrain, Y=ytrain, n_epochs=1000, learning_rate=0.01, layer_sizes=layer_sizes)
-
-if __name__ == '__main__':
-    neural_network()
+    parameters, mean_stats = neural_network()
+    dump_stats_json(batch_size=1, learning_rate=learning_rate, layer_sizes=layer_sizes, mean_stats=mean_stats)
