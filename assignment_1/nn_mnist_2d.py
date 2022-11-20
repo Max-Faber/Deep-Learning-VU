@@ -11,7 +11,7 @@ def sigmoid(x):
 
 def softmax(o):
     """
-
+    Applies softmax function to set of neurons
     :param o:
     :return:
     """
@@ -19,8 +19,8 @@ def softmax(o):
 
 def init_parameters_example():
     """
-
-    :return:
+    Parameters for the example in the assignment
+    :return: Dictionary of weights
     """
     return {
         'w': np.array([[1., 1., 1.], [-1., -1., -1.]]),
@@ -44,32 +44,44 @@ def init_parameters(layer_sizes, weight_range):
     }
 
 def forward_pass(X, params):
-    params['k'] = np.matmul(X, params['w']) + params['b']
-    params['h'] = sigmoid(params['k'])
-    params['o'] = np.matmul(params['h'], params['v']) + params['c']
-    params['y'] = softmax(params['o'])
-    return params
+    """
+    Performs 2D version of the forward pass
+    :param X: Input values
+    :param params: Weights, required for the forward pass
+    :return: Cache, containing values which are required for the rest of the training loop
+    """
+    k = np.matmul(X, params['w']) + params['b']
+    h = sigmoid(k)
+    o = np.matmul(h, params['v']) + params['c']
+    y = softmax(o)
+    cache = {
+        'k': k,
+        'h': h,
+        'o': o,
+        'y': y
+    }
+    return cache
 
 def backward_pass(X, Y, params, cache, layer_sizes):
     """
-
-    :param X:
-    :param Y:
-    :param params:
-    :param cache:
-    :param layer_sizes:
-    :return:
+    Performs 2D version of the backward pass
+    :param X: Input values
+    :param Y: Target values (int encoded)
+    :param params: Weights
+    :param cache: Activated neurons
+    :param layer_sizes: Sizes of the layers in the neural network
+    :return: Local derivatives, required for updating the weights
     """
     # Convert the target class to a one-hot encoding
     Y_one_hot = np.zeros(layer_sizes['n_outputs'])
     Y_one_hot[Y] = 1
     # Backward pass of second layer
-    dy_do = params['y'] - Y_one_hot
+    dy_do = cache['y'] - Y_one_hot
     dy_dc = np.copy(dy_do)
-    do_dv = np.outer(params['h'], dy_do)
+    do_dv = np.outer(cache['h'], dy_do)
     do_dh = np.matmul(params['v'], dy_do)
     # Backward pass of first layer
-    dh_dk = do_dh * params['h'] * (1. - params['h'])
+    dh_dk = do_dh * cache['h'] * (1. - cache['h'])
     dk_dw = np.outer(X, dh_dk)
     dk_db = np.copy(dh_dk)
     grads = {
@@ -112,6 +124,13 @@ def propagate(params, X_batch, Y_batch, layer_sizes):
     return costs, avg_grads
 
 def update_weights(params, grads, learning_rate):
+    """
+    Updates the weights of the neural networks
+    :param params: Dictionary storing the weights
+    :param grads: Local derivatives, calculated by backward_pass()
+    :param learning_rate: Rate to update the weights with
+    :return: Updated weights
+    """
     params['v'] -= learning_rate * grads['dy_dv']
     params['c'] -= learning_rate * grads['dy_dc']
     params['w'] -= learning_rate * grads['dk_dw']

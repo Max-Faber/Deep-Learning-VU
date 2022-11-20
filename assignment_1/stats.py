@@ -2,21 +2,25 @@ import json
 import os
 import numpy as np
 from datetime import datetime
+from plot import convert_data, load_runs
 
 dir_name = 'exports'
 
 def dump_stats_json(batch_size, learning_rate, layer_sizes, mean_stats):
     dt = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-    if 'train' in mean_stats.keys() and 'loss_per_epoch' in mean_stats['train'].keys():
-        mean_stats['train']['loss_per_epoch'] = mean_stats['train']['loss_per_epoch'].tolist() if type(mean_stats['train']['loss_per_epoch']) == np.ndarray else mean_stats['train']['loss_per_epoch']
-    if 'train' in mean_stats.keys() and 'acc_per_epoch' in mean_stats['train'].keys():
-        mean_stats['train']['acc_per_epoch'] = mean_stats['train']['acc_per_epoch'].tolist() if type(mean_stats['train']['acc_per_epoch']) == np.ndarray else mean_stats['train']['acc_per_epoch']
-    if 'train' in mean_stats.keys() and 'batch_loss_per_timestep' in mean_stats['train'].keys():
-        mean_stats['train']['batch_loss_per_timestep'] = mean_stats['train']['batch_loss_per_timestep'].tolist() if type(mean_stats['train']['batch_loss_per_timestep']) == np.ndarray else mean_stats['train']['batch_loss_per_timestep']
-    if 'val' in mean_stats.keys() and 'loss_per_epoch' in mean_stats['val'].keys():
-        mean_stats['val']['loss_per_epoch'] = mean_stats['val']['loss_per_epoch'].tolist() if type(mean_stats['val']['loss_per_epoch']) == np.ndarray else mean_stats['val']['loss_per_epoch']
-    if 'val' in mean_stats.keys() and 'acc_per_epoch' in mean_stats['val'].keys():
-        mean_stats['val']['acc_per_epoch'] = mean_stats['val']['acc_per_epoch'].tolist() if type(mean_stats['val']['acc_per_epoch']) == np.ndarray else mean_stats['val']['acc_per_epoch']
+    if 'loss_per_epoch' in mean_stats['train'].keys() and type(mean_stats['train']['loss_per_epoch']) == np.ndarray:
+        mean_stats['train']['loss_per_epoch'] = mean_stats['train']['loss_per_epoch'].tolist()
+    if 'acc_per_epoch' in mean_stats['train'].keys() and type(mean_stats['train']['acc_per_epoch']) == np.ndarray:
+        mean_stats['train']['acc_per_epoch'] = mean_stats['train']['acc_per_epoch'].tolist()
+    if 'loss_per_batch' in mean_stats['train'].keys() and type(mean_stats['train']['loss_per_batch']) == np.ndarray:
+        mean_stats['train']['loss_per_batch'] = mean_stats['train']['loss_per_batch'].tolist()
+    if 'loss_per_instance' in mean_stats['train'] and type(mean_stats['train']['loss_per_instance']) == np.ndarray:
+        mean_stats['train']['loss_per_instance'] = mean_stats['train']['loss_per_instance'].tolist()
+
+    if 'loss_per_epoch' in mean_stats['val'].keys() and type(mean_stats['val']['loss_per_epoch']) == np.ndarray:
+        mean_stats['val']['loss_per_epoch'] = mean_stats['val']['loss_per_epoch'].tolist()
+    if 'acc_per_epoch' in mean_stats['val'].keys() and type(mean_stats['val']['acc_per_epoch']) == np.ndarray:
+        mean_stats['val']['acc_per_epoch'] = mean_stats['val']['acc_per_epoch'].tolist()
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
     with open(f"{dir_name}/{dt}.json", mode='w') as output_json:
@@ -32,3 +36,14 @@ def get_accuracy(Y, T):
     diff = Y - T
     n_correct = diff == 0
     return sum(n_correct) / len(Y)
+
+if __name__ == '__main__':
+    dirs = ['exports/sgd_lr001/*', 'exports/sgd_lr003/*', 'exports/sgd_lr01/*', 'exports/sgd_lr03/*']
+    types = ['loss_per_epoch', 'acc_per_epoch']
+    for dir in dirs:
+        runs = load_runs(dir_name=dir)
+        for t in types:
+            _, converted_val = convert_data(runs=runs, type=t)
+            last_run = converted_val[-1:]
+            print(f'Dir: {dir}, type: {t}, mean: {last_run.mean()}, std: {last_run.std()}')
+        pass

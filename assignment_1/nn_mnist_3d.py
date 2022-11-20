@@ -6,17 +6,25 @@ from stats import dump_stats_json, get_accuracy
 
 def softmax(O):
     """
-
-    :param O:
-    :return:
+    Applies softmax function to nested numpy array
+    :param O: Non activated neurons
+    :return: Activated neurons
     """
     exp = np.exp(O)
     sum = np.sum(exp, axis=-1, keepdims=True)
     return exp / sum
 
 def forward_pass(X, params):
+    """
+    3D Version of the forward pass
+    :param X: Input values
+    :param params: Required parameters for the forward pass
+    :return: Required values for the rest of the training loop
+    """
+    # Forward pass of first layer
     k = np.matmul(X, params['w']) + params['b']
     h = sigmoid(k)
+    # Forward pass of second layer
     o = np.matmul(h, params['v']) + params['c']
     y = softmax(o)
     cache = {
@@ -29,18 +37,18 @@ def forward_pass(X, params):
 
 def backward_pass(X, Y, params, cache):
     """
-
-    :param X:
-    :param Y:
-    :param params:
-    :param cache:
-    :return:
+    Performs 3D version of the backward pass
+    :param X: Input values
+    :param Y: Output values (one-hot encoded)
+    :param params: Required parameters for the backward pass
+    :param cache: Weights
+    :return: Averaged derivatives after performing the backward pass
     """
     # Backward pass of second layer
     dy_do = cache['y'] - Y
     dy_dc = np.copy(dy_do)
-    do_dv = np.einsum('ij,ik->ijk', cache['h'], dy_do) # np.matmul(params['h'].T, dy_do) # np.matmul(dy_do.T, params['h']) # np.outer(params['h'], dy_do)
-    do_dh = np.matmul(dy_do, params['v'].T) # np.matmul(params['v'], dy_do)
+    do_dv = np.einsum('ij,ik->ijk', cache['h'], dy_do)
+    do_dh = np.matmul(dy_do, params['v'].T)
     # Backward pass of first layer
     dh_dk = do_dh * cache['h'] * (1. - cache['h'])
     dk_dw = np.einsum('ij,ik->ijk', X, dh_dk)
@@ -78,6 +86,7 @@ def propagate(params, X_batch, Y_batch_one_hot, Y_batch, perform_backward=True):
 def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_hot):
     """
     Trains the model using the given training data and target values for a given no. epochs and using a given learning rate
+    Collects stat data for the plots in the report
     :param params: Parameters (weights) of the model
     :param X_train: List of (training) instances containing the features to train on
     :param Y_train: List of (training) target values of the instances
@@ -89,7 +98,8 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
         'train': {
             'loss_per_epoch': np.array([]),
             'acc_per_epoch': np.array([]),
-            'batch_loss_per_timestep': np.array([])
+            'loss_per_batch': np.array([]),
+            'loss_per_instance': np.array([])
         },
         'val': {
             'loss_per_epoch': np.array([]),
@@ -100,12 +110,13 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
     n_samples_val = len(X_val)
     for epoch in range(1, n_epochs + 1):
         losses_train, accs_train, losses_val, accs_val = np.array([]), np.array([]), np.array([]), np.array([])
-        # Shuffle the data
+        # Shuffle the data (Gradient Descent)
         zipped = list(zip(X_train, Y_train, Y_train_one_hot))
         random.shuffle(zipped)
         X_train, Y_train, Y_train_one_hot = zip(*zipped)
         for i in range(0, n_samples_train, batch_size):
             # Perform a propagation step using the training data
+            # Grab the batch
             X_batch_train = X_train[i:min(i + batch_size, n_samples_train)]
             Y_batch_train_one_hot = Y_train_one_hot[i:min(i + batch_size, n_samples_train)]
             Y_batch_train = Y_train[i:min(i + batch_size, n_samples_train)]
@@ -118,7 +129,10 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
             params = update_weights(params=params, grads=mean_grads, learning_rate=learning_rate)
             losses_train = np.append(losses_train, losses_batch_train)
             accs_train = np.append(accs_train, acc_train)
-            mean_stats['train']['batch_loss_per_timestep'] = np.append(mean_stats['train']['batch_loss_per_timestep'], losses_batch_train.sum() / losses_batch_train.size)
+            mean_batch_loss = losses_batch_train.sum() / losses_batch_train.size
+            mean_stats['train']['loss_per_batch'] = np.append(mean_stats['train']['loss_per_batch'], mean_batch_loss)
+            mean_stats['train']['loss_per_instance'] = np.append(mean_stats['train']['loss_per_instance'], losses_batch_train)
+        # Validate the training using the validation data
         for i in range(0, n_samples_val, batch_size):
             # Perform a propagation step using the validation data (without backward pass and weight update obviously)
             X_batch_val = X_val[i:min(i + batch_size, n_samples_val)]
@@ -133,7 +147,6 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
             )
             losses_val = np.append(losses_val, loss_val)
             accs_val = np.append(accs_val, acc_val)
-
         mean_loss_train = np.mean(losses_train)
         mean_acc_train = np.mean(accs_train)
         mean_loss_val = np.mean(losses_val)
@@ -147,25 +160,25 @@ def optimize(params, X_train, Y_train, Y_train_one_hot, X_val, Y_val, Y_val_one_
 
 def convert_one_hot(Y):
     """
-
-    :param Y:
-    :param n_classes:
-    :return:
+    Convert int representation to one-hot encoding
+    :param Y: Int represented target classes
+    :param n_classes: No. classes
+    :return: One-hot encoded target classes
     """
     return np.eye(n_classes, dtype=int)[Y]
 
 def neural_network():
     """
-
-    :return:
+    Constructs the neural network
+    :return: Parameters after training, statistics for generating plots for the report
     """
     # Initialize the weights using the layer sizes and weight range
     params = init_parameters(layer_sizes=layer_sizes, weight_range=(-1., 1.))
     parameters, mean_stats = optimize(
         params=params,
-        X_train=xtrain_norm[:10000],
-        Y_train=ytrain[:10000],
-        Y_train_one_hot=ytrain_one_hot[:10000],
+        X_train=xtrain_norm,
+        Y_train=ytrain,
+        Y_train_one_hot=ytrain_one_hot,
         X_val=xval_norm,
         Y_val=yval,
         Y_val_one_hot=yval_one_hot
@@ -174,10 +187,10 @@ def neural_network():
 
 if __name__ == '__main__':
     batch_size = 32
-    learning_rate = 0.01
+    learning_rate = 0.03
     n_epochs = 5
     # Load the data to train on
-    (xtrain, ytrain), (xval, yval), n_classes = load_mnist()
+    (xtrain, ytrain), (xval, yval), n_classes = load_mnist(final=True)
     # Normalize the training data
     xtrain_norm, xval_norm = normalize(xtrain), normalize(xval)
     ytrain_one_hot, yval_one_hot = convert_one_hot(Y=ytrain), convert_one_hot(Y=yval)
