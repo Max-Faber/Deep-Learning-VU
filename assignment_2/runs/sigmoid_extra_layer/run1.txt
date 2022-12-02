@@ -1,0 +1,66 @@
+## loaded data:
+         number of instances: 55000 in training, 5000 in validation
+ training class distribution: [5434 6212 5465 5622 5343 4963 5436 5702 5357 5466]
+     val. class distribution: [489 530 493 509 499 458 482 563 494 483]
+
+## Starting training
+epoch 000
+       accuracy: 0.1006
+   running loss: 1.126
+epoch 001
+       accuracy: 0.9034
+   running loss: 0.5241
+epoch 002
+       accuracy: 0.9226
+   running loss: 0.3962
+epoch 003
+       accuracy: 0.934
+   running loss: 0.3342
+epoch 004
+       accuracy: 0.9376
+   running loss: 0.2952
+epoch 005
+       accuracy: 0.9426
+   running loss: 0.2673
+epoch 006
+       accuracy: 0.945
+   running loss: 0.2458
+epoch 007
+       accuracy: 0.9484
+   running loss: 0.2284
+epoch 008
+       accuracy: 0.95
+   running loss: 0.2137
+epoch 009
+       accuracy: 0.9514
+   running loss: 0.2011
+epoch 010
+       accuracy: 0.9524
+   running loss: 0.1902
+epoch 011
+       accuracy: 0.9536
+   running loss: 0.1805
+epoch 012
+       accuracy: 0.9532
+   running loss: 0.1718
+epoch 013
+       accuracy: 0.954
+   running loss: 0.1639
+epoch 014
+       accuracy: 0.9558
+   running loss: 0.1568
+epoch 015
+       accuracy: 0.9564
+   running loss: 0.1504
+epoch 016
+       accuracy: 0.9562
+   running loss: 0.1444
+epoch 017
+       accuracy: 0.9582
+   running loss: 0.1389
+epoch 018
+       accuracy: 0.9592
+   running loss: 0.1338
+epoch 019
+       accuracy: 0.9602
+   running loss: 0.129
