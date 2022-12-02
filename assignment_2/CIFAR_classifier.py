@@ -72,10 +72,10 @@ class Net(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         # lr = random.uniform(0.01, 0.0001)
         # momentum = random.uniform(0.9, 0.9999)
-        lr = 0.001
-        momentum = 0.9
+        lr = 0.0082
+        momentum = 0.9028
         print(f'lr: {lr}, momentum: {momentum}')
-        self.optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+        self.optimizer = optim.Adam(net.parameters(), lr=lr)
         self.train_model()
         self.evaluate_network()
 
@@ -85,7 +85,7 @@ class Net(nn.Module):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         # batch_size = random.choice([4, 8, 16, 32, 64, 128])
-        batch_size = 4
+        batch_size = 32
         print(f'batch_size: {batch_size}')
         trainset = torchvision.datasets.CIFAR10(
             root='./data',
@@ -130,4 +130,4 @@ def imshow(img):
 
 if __name__ == '__main__':
     net = Net()
-    Net().model()
+    net.model()
